@@ -61,12 +61,7 @@ export default function Home() {
     });
   }, [services, searchQuery, selectedCategory]);
 
-  const displayedServices = useMemo(() => {
-    if (searchQuery.trim() === '' && selectedCategory === 'Semua') {
-      return filteredServices.slice(0, 6);
-    }
-    return filteredServices;
-  }, [filteredServices, searchQuery, selectedCategory]);
+  const displayedServices = filteredServices;
 
   const isSearching = searchQuery.trim() !== '';
 

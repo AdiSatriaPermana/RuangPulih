@@ -1,4 +1,6 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import supabase from '../lib/supabase';
 
 interface NavbarProps {
   onOpenHelp: () => void;
@@ -6,8 +8,45 @@ interface NavbarProps {
 
 export default function Navbar({ onOpenHelp }: NavbarProps) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      // Cek mode demo admin
+      if (localStorage.getItem('demoAdmin') === 'true') {
+        setIsAdminLoggedIn(true);
+        return;
+      }
+
+      // Cek sesi login Supabase
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      setIsAdminLoggedIn(!!session?.user);
+    };
+
+    checkStatus();
+
+    // Pantau perubahan status auth secara real-time
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const isDemo = localStorage.getItem('demoAdmin') === 'true';
+      setIsAdminLoggedIn(isDemo || !!session?.user);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [location.pathname]);
+
+  const handleLogout = async () => {
+    localStorage.removeItem('demoAdmin');
+    await supabase.auth.signOut();
+    setIsAdminLoggedIn(false);
+    navigate('/masuk');
+  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-[#E5E9E6] bg-[#FBFBF9]/95 backdrop-blur-sm">
@@ -62,6 +101,19 @@ export default function Navbar({ onOpenHelp }: NavbarProps) {
             Lacak Status
           </Link>
 
+          {isAdminLoggedIn && (
+            <Link
+              to="/admin"
+              className={`text-sm font-medium transition-colors ${
+                location.pathname.startsWith('/admin')
+                  ? 'font-semibold text-[#1F5E47]'
+                  : 'text-[#4B5550] hover:text-[#181C1A]'
+              }`}
+            >
+              Dasbor
+            </Link>
+          )}
+
           <button
             type="button"
             onClick={onOpenHelp}
@@ -70,12 +122,22 @@ export default function Navbar({ onOpenHelp }: NavbarProps) {
             Bantuan
           </button>
 
-          <Link
-            to="/masuk"
-            className="rounded-lg border border-[#D4DDD8] bg-white px-4 py-2 text-sm font-semibold text-[#181C1A] transition-colors hover:bg-[#F2F5F3]"
-          >
-            Masuk
-          </Link>
+          {isAdminLoggedIn ? (
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-lg border border-[#FECACA] bg-[#FEF2F2] px-4 py-2 text-sm font-semibold text-[#B91C1C] transition-colors hover:bg-[#FEE2E2]"
+            >
+              Keluar
+            </button>
+          ) : (
+            <Link
+              to="/masuk"
+              className="rounded-lg border border-[#D4DDD8] bg-white px-4 py-2 text-sm font-semibold text-[#181C1A] transition-colors hover:bg-[#F2F5F3]"
+            >
+              Masuk
+            </Link>
+          )}
         </nav>
       </div>
     </header>
