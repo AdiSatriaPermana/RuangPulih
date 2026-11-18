@@ -7,6 +7,12 @@ export default function ProtectedRoute() {
   const [checking, setChecking] = useState(true);
 
   const checkAdmin = useCallback(async () => {
+    // 1. Cek mode simulasi Demo Admin terlebih dahulu
+    if (localStorage.getItem('demoAdmin') === 'true') {
+      setChecking(false);
+      return;
+    }
+
     try {
       const {
         data: { user },
@@ -54,7 +60,6 @@ export default function ProtectedRoute() {
         style={{ backgroundColor: '#F9FAF8' }}
       >
         <div className="flex flex-col items-center gap-4">
-          {/* Spinner */}
           <svg
             className="animate-spin h-10 w-10"
             style={{ color: '#1F5E47' }}

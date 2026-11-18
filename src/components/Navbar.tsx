@@ -14,9 +14,25 @@ export default function Navbar({ onOpenHelp }: NavbarProps) {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
         {/* Brand */}
         <Link to="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1F5E47] text-sm font-bold text-white">
-            RP
-          </div>
+          <svg
+            className="h-8 w-8 shrink-0"
+            viewBox="0 0 64 64"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <rect width="64" height="64" rx="16" fill="#1F5E47" />
+            <path
+              d="M32 13L47 19.5V31.5C47 41.2 40.6 49.8 32 52.5C23.4 49.8 17 41.2 17 31.5V19.5L32 13Z"
+              fill="#E9F3EE"
+            />
+            <path
+              d="M32 23V41M23 32H41"
+              stroke="#1F5E47"
+              strokeWidth="4.5"
+              strokeLinecap="round"
+            />
+          </svg>
           <span className="text-lg font-bold tracking-tight text-[#181C1A]">
             Ruang Pulih
           </span>
