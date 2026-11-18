@@ -1,119 +1,129 @@
-import { useState } from 'react';
-import { ClipboardList, Filter } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
+import { Filter } from 'lucide-react';
 
-type AuditAction = 'Semua' | 'Tambah Layanan' | 'Edit Layanan' | 'Ubah Status Ajuan' | 'Login';
-
-interface AuditEntry {
+interface AuditLogEntry {
   id: string;
-  waktu: string;
-  admin: string;
-  aksi: AuditAction;
-  detail: string;
+  admin_email: string;
+  action: string;
+  target_object: string;
+  created_at: string;
 }
 
-const mockAuditLog: AuditEntry[] = [
-  { id: '1', waktu: '18 Nov 2026, 09:14', admin: 'admin@ruangpulih.id', aksi: 'Login', detail: 'Login berhasil dari 192.168.1.10' },
-  { id: '2', waktu: '17 Nov 2026, 15:42', admin: 'admin@ruangpulih.id', aksi: 'Ubah Status Ajuan', detail: 'Ajuan RP-2026-0041 → Diproses' },
-  { id: '3', waktu: '17 Nov 2026, 14:08', admin: 'admin@ruangpulih.id', aksi: 'Edit Layanan', detail: 'Edit "Bantuan Beasiswa" – pembaruan kontak unit' },
-  { id: '4', waktu: '16 Nov 2026, 11:30', admin: 'admin@ruangpulih.id', aksi: 'Ubah Status Ajuan', detail: 'Ajuan RP-2026-0039 → Diterima' },
-  { id: '5', waktu: '15 Nov 2026, 16:55', admin: 'pengelola2@ruangpulih.id', aksi: 'Tambah Layanan', detail: 'Tambah layanan "Aksesibilitas Kampus"' },
-  { id: '6', waktu: '15 Nov 2026, 10:03', admin: 'admin@ruangpulih.id', aksi: 'Login', detail: 'Login berhasil dari 10.0.0.5' },
-  { id: '7', waktu: '14 Nov 2026, 13:21', admin: 'pengelola2@ruangpulih.id', aksi: 'Edit Layanan', detail: 'Edit "Konsultasi Akademik" – pembaruan jadwal' },
-  { id: '8', waktu: '13 Nov 2026, 09:47', admin: 'admin@ruangpulih.id', aksi: 'Ubah Status Ajuan', detail: 'Ajuan RP-2026-0030 → Selesai' },
-  { id: '9', waktu: '12 Nov 2026, 14:15', admin: 'pengelola2@ruangpulih.id', aksi: 'Tambah Layanan', detail: 'Tambah layanan "Program Bantuan Pendidikan"' },
-  { id: '10', waktu: '11 Nov 2026, 08:30', admin: 'admin@ruangpulih.id', aksi: 'Login', detail: 'Login berhasil dari 192.168.1.10' },
-];
-
-const ACTION_OPTIONS: AuditAction[] = ['Semua', 'Tambah Layanan', 'Edit Layanan', 'Ubah Status Ajuan', 'Login'];
-
 export default function AuditLog() {
-  const [filter, setFilter] = useState<AuditAction>('Semua');
+  const [logs, setLogs] = useState<AuditLogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedAction, setSelectedAction] = useState('Semua');
 
-  const filtered = filter === 'Semua' ? mockAuditLog : mockAuditLog.filter((e) => e.aksi === filter);
+  useEffect(() => {
+    async function fetchLogs() {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Gagal memuat audit log:', error);
+      } else {
+        setLogs(data || []);
+      }
+      setLoading(false);
+    }
+
+    fetchLogs();
+  }, []);
+
+  const filteredLogs = logs.filter((log) => {
+    if (selectedAction === 'Semua') return true;
+    return log.action.toLowerCase() === selectedAction.toLowerCase();
+  });
+
+  function formatDate(isoString: string): string {
+    const date = new Date(isoString);
+    return date.toLocaleString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#F9FAF8', color: '#181C1A' }}>
-      <div className="max-w-5xl mx-auto px-6 py-10">
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-[#181C1A]">Log Aktivitas</h1>
+        <p className="mt-1 text-sm text-[#4B5550]">
+          Riwayat seluruh aktivitas yang dilakukan oleh pengelola platform.
+        </p>
+      </div>
 
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-1">
-            <ClipboardList size={24} style={{ color: '#1F5E47' }} />
-            <h1 className="text-2xl font-bold" style={{ color: '#181C1A' }}>Log Aktivitas</h1>
-          </div>
-          <p style={{ color: '#4B5550' }} className="text-sm">Riwayat seluruh aktivitas yang dilakukan oleh pengelola platform.</p>
+      {/* Filter Aksi */}
+      <div className="mb-6 flex items-center gap-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-[#4B5550]">
+          <Filter size={16} />
+          <span>Filter Aksi:</span>
         </div>
+        <select
+          value={selectedAction}
+          onChange={(e) => setSelectedAction(e.target.value)}
+          className="rounded-xl border border-[#E5E9E6] bg-white px-3 py-2 text-sm text-[#181C1A] outline-none focus:border-[#1F5E47]"
+        >
+          <option value="Semua">Semua</option>
+          <option value="Ubah Status Ajuan">Ubah Status Ajuan</option>
+          <option value="Edit Layanan">Edit Layanan</option>
+          <option value="Tambah Layanan">Tambah Layanan</option>
+          <option value="Login">Login</option>
+        </select>
+      </div>
 
-        {/* Filter */}
-        <div className="flex items-center gap-3 mb-6">
-          <Filter size={16} style={{ color: '#4B5550' }} />
-          <label className="text-sm font-medium" style={{ color: '#4B5550' }}>Filter Aksi:</label>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value as AuditAction)}
-            className="text-sm rounded-lg border px-3 py-2 outline-none focus:ring-2 focus:ring-[#1F5E47]"
-            style={{ borderColor: '#E5E9E6', color: '#181C1A', backgroundColor: '#fff' }}
-          >
-            {ACTION_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Table */}
-        <div className="rounded-2xl border overflow-hidden" style={{ borderColor: '#E5E9E6' }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ backgroundColor: '#F9FAF8' }}>
-                <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#4B5550' }}>Waktu</th>
-                <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#4B5550' }}>Admin</th>
-                <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#4B5550' }}>Aksi</th>
-                <th className="text-left px-6 py-3 font-medium text-xs uppercase tracking-wide" style={{ color: '#4B5550' }}>Detail</th>
+      {/* Tabel Log */}
+      <div className="overflow-hidden rounded-2xl border border-[#E5E9E6] bg-white shadow-xs">
+        <table className="w-full text-left border-collapse">
+          <thead>
+            <tr className="border-b border-[#E5E9E6] bg-[#F9FAF8] text-xs font-semibold uppercase tracking-wider text-[#4B5550]">
+              <th className="px-6 py-4">Waktu</th>
+              <th className="px-6 py-4">Admin</th>
+              <th className="px-6 py-4">Aksi</th>
+              <th className="px-6 py-4">Detail</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#E5E9E6] text-sm text-[#181C1A]">
+            {loading ? (
+              <tr>
+                <td colSpan={4} className="px-6 py-8 text-center text-[#4B5550]">
+                  Memuat log aktivitas...
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {filtered.map((entry, i) => (
-                <tr
-                  key={entry.id}
-                  style={{
-                    backgroundColor: i % 2 === 0 ? '#fff' : '#FBFBF9',
-                    borderTop: '1px solid #E5E9E6',
-                  }}
-                >
-                  <td className="px-6 py-4 whitespace-nowrap text-xs font-mono" style={{ color: '#4B5550' }}>{entry.waktu}</td>
-                  <td className="px-6 py-4 text-xs" style={{ color: '#4B5550' }}>{entry.admin}</td>
+            ) : filteredLogs.length > 0 ? (
+              filteredLogs.map((log) => (
+                <tr key={log.id} className="hover:bg-[#FBFBF9] transition-colors">
+                  <td className="px-6 py-4 text-xs text-[#4B5550]">
+                    {formatDate(log.created_at)}
+                  </td>
+                  <td className="px-6 py-4 font-medium text-[#181C1A]">
+                    {log.admin_email}
+                  </td>
                   <td className="px-6 py-4">
-                    <span
-                      className="inline-block px-2 py-1 rounded-full text-xs font-medium"
-                      style={{
-                        backgroundColor:
-                          entry.aksi === 'Login' ? '#EDF2F7' :
-                          entry.aksi === 'Tambah Layanan' ? '#E9F3EE' :
-                          entry.aksi === 'Edit Layanan' ? '#F5EFE6' :
-                          '#FDF8EE',
-                        color:
-                          entry.aksi === 'Login' ? '#2C4A6E' :
-                          entry.aksi === 'Tambah Layanan' ? '#1F5E47' :
-                          entry.aksi === 'Edit Layanan' ? '#6E4E24' :
-                          '#7A541C',
-                      }}
-                    >
-                      {entry.aksi}
+                    <span className="inline-block rounded-lg bg-[#E9F3EE] px-2.5 py-1 text-xs font-semibold text-[#1F5E47]">
+                      {log.action}
                     </span>
                   </td>
-                  <td className="px-6 py-4" style={{ color: '#181C1A' }}>{entry.detail}</td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-sm" style={{ color: '#4B5550' }}>
-                    Tidak ada entri untuk filter ini.
+                  <td className="px-6 py-4 text-[#4B5550]">
+                    {log.target_object}
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="px-6 py-8 text-center text-[#4B5550]">
+                  Belum ada catatan aktivitas.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   );

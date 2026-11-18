@@ -12,28 +12,33 @@ import { supabase } from '../../lib/supabase';
 import { INITIAL_SERVICES } from '../../types/database';
 import StatusBadge from '../../components/StatusBadge';
 
-type RequestStatus = 'Diterima' | 'Diproses' | 'Selesai';
+type BadgeStatus = 'Diterima' | 'Diproses' | 'Selesai';
+type DbStatus = 'Submitted' | 'In review' | 'Completed';
 
 interface RequestRecord {
   id: string;
   reference_number: string;
   service_title: string;
   applicant_name: string;
-  applicant_nim: string;
+  applicant_nim: string | null;
   status: string;
   created_at: string;
 }
 
-const STATUS_OPTIONS: RequestStatus[] = [
-  'Diterima',
-  'Diproses',
-  'Selesai',
+const STATUS_OPTIONS: { label: BadgeStatus; dbValue: DbStatus }[] = [
+  { label: 'Diterima', dbValue: 'Submitted' },
+  { label: 'Diproses', dbValue: 'In review' },
+  { label: 'Selesai', dbValue: 'Completed' },
 ];
 
-function normalizeStatus(rawStatus: string): RequestStatus {
+function normalizeToBadgeStatus(rawStatus: string): BadgeStatus {
   const s = (rawStatus || '').toLowerCase();
-  if (s === 'diproses' || s === 'in_review' || s === 'in review') return 'Diproses';
-  if (s === 'selesai' || s === 'completed') return 'Selesai';
+  if (s === 'diproses' || s === 'in_review' || s === 'in review' || s === 'referred') {
+    return 'Diproses';
+  }
+  if (s === 'selesai' || s === 'completed') {
+    return 'Selesai';
+  }
   return 'Diterima';
 }
 
@@ -61,7 +66,6 @@ export default function AdminDashboard() {
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
 
-    // 1. Ambil daftar permohonan terbaru dari Supabase
     const { data: reqData, error: reqError } = await supabase
       .from('requests')
       .select(
@@ -73,7 +77,6 @@ export default function AdminDashboard() {
       setRequests(reqData);
     }
 
-    // 2. Ambil statistik layanan aktif dari Supabase (fallback ke INITIAL_SERVICES jika kosong)
     const { data: svcData, error: svcError } = await supabase
       .from('services')
       .select('category, is_active');
@@ -93,43 +96,34 @@ export default function AdminDashboard() {
 
   const handleStatusChange = async (
     req: RequestRecord,
-    newStatus: RequestStatus
+    newBadgeStatus: BadgeStatus
   ) => {
+    const matched = STATUS_OPTIONS.find((opt) => opt.label === newBadgeStatus);
+    const dbStatus: DbStatus = matched ? matched.dbValue : 'Submitted';
+
     setUpdatingId(req.id);
 
     const { error } = await supabase
       .from('requests')
       .update({
-        status: newStatus,
+        status: dbStatus,
         updated_at: new Date().toISOString(),
       })
       .eq('id', req.id);
 
     if (!error) {
-      // Perbarui state lokal langsung
       setRequests((prev) =>
         prev.map((item) =>
-          item.id === req.id ? { ...item, status: newStatus } : item
+          item.id === req.id ? { ...item, status: dbStatus } : item
         )
       );
-
-      // Catat ke audit_logs
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      await supabase.from('audit_logs').insert([
-        {
-          admin_email: user?.email || 'demo-admin@ruangpulih',
-          action: `Mengubah status ajuan menjadi "${newStatus}"`,
-          target_object: req.reference_number,
-        },
-      ]);
+    } else {
+      console.error('Gagal memperbarui status:', error);
     }
 
     setUpdatingId(null);
   };
 
-  // Hitung jumlah ajuan bulan ini & menunggu verifikasi secara dinamis
   const now = new Date();
   const monthlyRequestsCount = requests.filter((r) => {
     const d = new Date(r.created_at);
@@ -139,7 +133,7 @@ export default function AdminDashboard() {
   }).length;
 
   const pendingVerificationCount = requests.filter(
-    (r) => normalizeStatus(r.status) === 'Diterima'
+    (r) => normalizeToBadgeStatus(r.status) === 'Diterima'
   ).length;
 
   const stats = [
@@ -175,12 +169,11 @@ export default function AdminDashboard() {
       style={{ backgroundColor: '#F9FAF8', color: '#181C1A' }}
     >
       <div className="max-w-5xl mx-auto px-6 py-10">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-1">
             <LayoutDashboard size={24} style={{ color: '#1F5E47' }} />
             <h1 className="text-2xl font-bold" style={{ color: '#181C1A' }}>
-              Dasbor Pengelola
+              Dashboard Pengelola
             </h1>
           </div>
           <p style={{ color: '#4B5550' }} className="text-sm">
@@ -188,7 +181,6 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 gap-4 mb-8 sm:grid-cols-4">
           {stats.map((stat) => (
             <div
@@ -207,7 +199,6 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Quick Nav */}
         <div className="flex gap-3 mb-8">
           <Link
             to="/admin/kelola"
@@ -231,7 +222,6 @@ export default function AdminDashboard() {
           </Link>
         </div>
 
-        {/* Recent Requests */}
         <div
           className="rounded-2xl border overflow-hidden"
           style={{ borderColor: '#E5E9E6', backgroundColor: '#fff' }}
@@ -304,7 +294,7 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody>
                   {requests.map((req, i) => {
-                    const currentStatus = normalizeStatus(req.status);
+                    const currentStatus = normalizeToBadgeStatus(req.status);
                     return (
                       <tr
                         key={req.id}
@@ -329,7 +319,7 @@ export default function AdminDashboard() {
                             className="text-xs"
                             style={{ color: '#4B5550' }}
                           >
-                            NIM: {req.applicant_nim}
+                            NIM: {req.applicant_nim || '-'}
                           </div>
                         </td>
                         <td
@@ -354,14 +344,14 @@ export default function AdminDashboard() {
                             onChange={(e) =>
                               handleStatusChange(
                                 req,
-                                e.target.value as RequestStatus
+                                e.target.value as BadgeStatus
                               )
                             }
                             className="rounded-lg border border-[#D4DDD8] bg-[#F9FAF8] px-2.5 py-1.5 text-xs font-medium text-[#181C1A] outline-none focus:border-[#1F5E47] disabled:opacity-50"
                           >
                             {STATUS_OPTIONS.map((opt) => (
-                              <option key={opt} value={opt}>
-                                {opt}
+                              <option key={opt.dbValue} value={opt.label}>
+                                {opt.label}
                               </option>
                             ))}
                           </select>

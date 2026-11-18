@@ -34,7 +34,7 @@ ruang-pulih/
 │   ├── lib/
 │   │   └── supabase.ts         # Konfigurasi koneksi client Supabase
 │   ├── pages/              # Halaman utama aplikasi
-│   │   ├── admin/              # Halaman khusus Dasbor Pengelola/Admin
+│   │   ├── admin/              # Halaman khusus Dashboard Pengelola/Admin
 │   │   │   ├── AdminDashboard.tsx  # Statistik & daftar ajuan masuk
 │   │   │   ├── AuditLog.tsx        # Catatan riwayat aktivitas admin
 │   │   │   └── ManageServices.tsx  # Tambah & edit informasi layanan

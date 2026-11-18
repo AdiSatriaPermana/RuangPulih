@@ -110,7 +110,7 @@ export default function Navbar({ onOpenHelp }: NavbarProps) {
                   : 'text-[#4B5550] hover:text-[#181C1A]'
               }`}
             >
-              Dasbor
+              Dashboard
             </Link>
           )}
 
