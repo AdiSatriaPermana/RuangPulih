@@ -172,3 +172,46 @@ export const INITIAL_SERVICES: ServiceItem[] = [
     isActive: true,
   },
 ];
+
+export type RequestStatus = 'Submitted' | 'In review' | 'Referred' | 'Completed';
+
+export interface RequestItem {
+  id: string;
+  reference_number: string;
+  service_id: string | null;
+  service_slug: string;
+  service_title: string;
+  applicant_name: string;
+  applicant_email: string;
+  brief_purpose: string;
+  status: RequestStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuditLogItem {
+  id: string;
+  admin_email: string;
+  action: string;
+  target_object: string;
+  created_at: string;
+}
+
+// Mapper dari baris tabel Supabase ke tipe ServiceItem frontend
+export function mapRowToServiceItem(row: Record<string, any>): ServiceItem {
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    category: row.category as ServiceCategory,
+    summary: row.summary,
+    verifiedAt: row.verified_at,
+    source: row.source,
+    unitName: row.unit_name,
+    contactEmail: row.contact_email,
+    contactPhone: row.contact_phone,
+    officialSteps: Array.isArray(row.official_steps) ? row.official_steps : [],
+    prerequisites: Array.isArray(row.prerequisites) ? row.prerequisites : [],
+    isActive: row.is_active,
+  };
+}
