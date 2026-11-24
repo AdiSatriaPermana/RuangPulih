@@ -42,9 +42,8 @@ export default function HelpModal({ isOpen, onClose }: HelpModalProps) {
         </div>
 
         <div className="mt-4 space-y-1 text-xs text-[#5A635E]">
-          <p>Kontak contoh dari materi: layanan@kampus.ac.id</p>
-          <p>Nomor telepon contoh: (022) 0000 0000</p>
-          <p>Tidak ada data yang dikirim dalam prototipe ini.</p>
+          <p>Kontak : info@uinsgd.ac.id / humas_aljamiah@uinsgd.ac.idd</p>
+          <p>Nomor telepon : (022) 7800525</p>
         </div>
 
         <button
